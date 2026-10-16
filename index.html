@@ -520,12 +520,14 @@ function vSpot(){
 function syncUrl(){try{return (localStorage.getItem(LS_SYNC)||"").replace(/\/$/,"")}catch(e){return ""}}
 
 /* ----- Banco no GitHub (arquivo JSON no repositorio, sem servidor ligado) ----- */
+/* Repositorio padrao deste evento (usado quando nao esta no GitHub Pages) */
+var GH_DEFAULT={owner:"thiago-cidao",repo:"colorado",branch:"main",file:"dados.json"};
 function ghCfg(){
   var c=null;try{c=JSON.parse(localStorage.getItem(LS_GH)||"null")}catch(e){}
   if(c&&c.owner&&c.repo)return c;
   var m=/^([^.]+)\.github\.io$/i.exec(location.hostname);
   if(m){var parts=location.pathname.split("/").filter(Boolean);if(parts[0])return{owner:m[1],repo:parts[0],branch:"main",file:"dados.json"}}
-  return null;
+  return Object.assign({},GH_DEFAULT);
 }
 function ghToken(){try{return localStorage.getItem(LS_GH_TOKEN)||""}catch(e){return ""}}
 function ghFile(){var c=ghCfg();return (c&&c.file)||"dados.json"}
@@ -564,6 +566,11 @@ window.ghPublish=function(silent){
   if(!c){if(!silent)alert("Configure primeiro o repositório do GitHub.");return}
   var tk=ghToken();
   if(!tk){if(!silent)alert("Falta o token do GitHub (só o admin precisa — veja as instruções na página).");return}
+  // trava: nunca sobrescrever o GitHub com um banco vazio
+  if(countTeams(S)===0){
+    if(silent)return;
+    if(!confirm("Este aparelho está SEM times (0 inscritos).\n\nPublicar agora vai SUBSTITUIR os dados do GitHub por um banco vazio.\n\nSe você quer apenas ver os dados que já existem, use “Baixar do GitHub ⬇”.\n\nTem certeza que quer publicar vazio?"))return;
+  }
   try{S.updatedAt=new Date().toISOString()}catch(e){}
   storeLocal();
   var base="https://api.github.com/repos/"+c.owner+"/"+c.repo;

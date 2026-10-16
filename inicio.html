@@ -76,17 +76,19 @@ function render(state){
 }
 function local(){try{var raw=localStorage.getItem("copa3_state_v1");if(raw)return JSON.parse(raw)}catch(e){}return null}
 function hasContent(p){if(!p)return false;if(Array.isArray(p.spotlight)&&p.spotlight.length)return true;try{var n=0;["A","B","C","D","E","F","G","H"].forEach(function(g){((p.teams||{})[g]||[]).forEach(function(t){if(t&&t.name)n++})});return n>0}catch(e){return false}}
-function ghRawList(){try{
-  var m=/^([^.]+)\.github\.io$/i.exec(location.hostname);if(!m)return [];
-  var parts=location.pathname.split("/").filter(Boolean);if(!parts[0])return [];
-  var cfg={owner:m[1],repo:parts[0],branch:"main",file:"dados.json"};
-  var s=JSON.parse(localStorage.getItem("copa3_gh")||"null");if(s&&s.owner&&s.repo)cfg=s;
+function ghRawList(){
+  var cfg={owner:"thiago-cidao",repo:"colorado",branch:"main",file:"dados.json"};
+  try{
+    var m=/^([^.]+)\.github\.io$/i.exec(location.hostname);
+    if(m){var parts=location.pathname.split("/").filter(Boolean);if(parts[0]){cfg={owner:m[1],repo:parts[0],branch:"main",file:"dados.json"}}}
+    var s=JSON.parse(localStorage.getItem("copa3_gh")||"null");if(s&&s.owner&&s.repo)cfg=s;
+  }catch(e){}
   var brs=[];var b=cfg.branch||"main";brs.push(b);
   if(brs.indexOf("main")<0)brs.push("main");
   if(brs.indexOf("master")<0)brs.push("master");
   var base="https://raw.githubusercontent.com/"+cfg.owner+"/"+cfg.repo+"/";
   return brs.map(function(x){return base+encodeURIComponent(x)+"/"+(cfg.file||"dados.json")+"?t="+Date.now()});
-}catch(e){return []}}
+}
 function ghTry(i,urls){
   if(i>=urls.length)return;
   fetch(urls[i],{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(p){if(hasContent(p))render(p)}).catch(function(){ghTry(i+1,urls)});
