@@ -214,7 +214,14 @@ function adminHash(){return localStorage.getItem(LS_HASH)||ADMIN_HASH}
 function hasHash(){return !!adminHash()}
 function openModal(html){document.getElementById("modal").innerHTML='<div class="modal-bg"><div class="modal">'+html+'</div></div>'}
 function closeModal(){document.getElementById("modal").innerHTML=""}
-function doLoginOk(){isAdmin=true;localStorage.setItem(LS_SESS,"1");closeModal();render(true)}
+function doLoginOk(){
+  isAdmin=true;localStorage.setItem(LS_SESS,"1");closeModal();render(true);
+  if(ghCfg()&&!ghToken()){
+    setTimeout(function(){
+      alert("BANCO ONLINE DESLIGADO neste aparelho.\n\nTudo o que você cadastrar aqui ficará só neste navegador.\n\nPara aparecer em qualquer navegador:\n1) Vá na aba “Banco / Online”\n2) Cole o token do GitHub e clique Salvar\n3) Clique “Publicar agora”");
+    },300);
+  }
+}
 function askSetPass(){openModal('<h3>Definir senha de administrador</h3><p class="muted">Primeira vez: crie a senha. Ela será guardada como hash SHA-256.</p><input id="pw1" type="password" placeholder="Nova senha"><div style="height:8px"></div><input id="pw2" type="password" placeholder="Confirmar senha"><div style="height:10px"></div><div class="row"><button class="btn-red" onclick="setPassGo()">Definir</button><button class="btn-ghost" onclick="closeModal()">Cancelar</button></div><p class="muted" id="pwErr"></p>')}
 window.setPassGo=function(){var a=document.getElementById("pw1").value,b=document.getElementById("pw2").value;if(!a){document.getElementById("pwErr").textContent="Digite uma senha.";return}if(a!==b){document.getElementById("pwErr").textContent="Confirmação diferente.";return}localStorage.setItem(LS_HASH,hhex(a));doLoginOk()};
 function askLogin(){openModal('<h3>Entrar como administrador</h3><input id="pw" type="password" placeholder="Senha"><div style="height:10px"></div><div class="row"><button class="btn-red" onclick="loginGo()">Entrar</button><button class="btn-ghost" onclick="closeModal()">Cancelar</button></div><p class="muted" id="pwErr"></p>')}
@@ -258,7 +265,14 @@ function renderHero(){
 }
 function renderAuth(){
   var el=document.getElementById("authArea");
-  if(isAdmin)el.innerHTML='<span class="pill">ADMIN</span> <button class="btn-small btn-line" onclick="askChange()">Trocar senha</button> <button class="btn-small btn-ghost" onclick="logout()">Sair</button>';
+  if(isAdmin){
+    var c=ghCfg(),tok=ghToken(),badge;
+    if(!c)badge='<button class="btn-small btn-line" onclick="goTab(\'sync\')">🌐 Banco desligado</button>';
+    else if(!tok)badge='<button class="btn-small btn-red" onclick="goTab(\'sync\')">⚠ Ligar banco online</button>';
+    else if(ghPending())badge='<button class="btn-small btn-red" onclick="goTab(\'sync\')">⚠ Falta publicar</button>';
+    else badge='<button class="btn-small btn-line" onclick="goTab(\'sync\')">🌐 Publicado</button>';
+    el.innerHTML='<span class="pill">ADMIN</span> '+badge+' <button class="btn-small btn-line" onclick="askChange()">Trocar senha</button> <button class="btn-small btn-ghost" onclick="logout()">Sair</button>';
+  }
   else if(!hasHash())el.innerHTML='<button class="btn-small btn-red" onclick="askSetPass()">Definir senha do admin</button>';
   else el.innerHTML='<button class="btn-small btn-red" onclick="askLogin()">Entrar como administrador</button>';
 }
@@ -307,7 +321,7 @@ var editingInsc=null;
 function groupCount(g){return (S.inscritos||[]).filter(function(r){return r.group===g}).length}
 function vTeams(){
   var n=(S.inscritos||[]).length;
-  var head=isAdmin?'<div class="card"><div class="row" style="justify-content:space-between"><div><h2 style="margin:0">Inscritos — '+n+' de 32</h2><span class="muted" id="saveMsg">Cadastre sem grupo e distribua. Grupos: '+GROUPS.map(function(g){return g+":"+groupCount(g)+"/4"}).join(" · ")+'</span></div><div class="row"><button class="btn-line" onclick="openListModal()">📋 Colar lista</button><button class="btn-red" onclick="newInsc()">＋ Novo inscrito</button><button class="btn-line" onclick="saveAllNow()">💾 Salvar tudo</button></div></div></div>'
+  var head=isAdmin?'<div class="card"><div class="row" style="justify-content:space-between"><div><h2 style="margin:0">Inscritos — '+n+' de 32</h2><span class="muted" id="saveMsg">Grupos: '+GROUPS.map(function(g){return g+":"+groupCount(g)+"/4"}).join(" · ")+ghWarnLine()+'</span></div><div class="row"><button class="btn-line" onclick="openListModal()">📋 Colar lista</button><button class="btn-red" onclick="newInsc()">＋ Novo inscrito</button><button class="btn-line" onclick="saveAllNow()">💾 Salvar tudo</button></div></div></div>'
   :'<div class="card"><h2 style="margin:0">Inscritos — '+n+' de 32</h2></div>';
   var rows=(S.inscritos||[]).map(function(t,i){
     var sub=((t.player?esc(t.player):"")+(t.player&&t.city?" · ":"")+(t.city?esc(t.city):""));
@@ -361,7 +375,7 @@ window.importList=function(){
   S.teams=distribute(S.inscritos);closeModal();saveAllNow();render(true);
   alert(added+" inscrito(s) criado(s)."+(skip?" "+skip+" linha(s) ignorada(s) (vazia/sem nome/limite).":"")+" Agora distribua os grupos.");
 };
-window.saveAllNow=function(){saveNow(true);var m=document.getElementById("saveMsg");render(true);var m2=document.getElementById("saveMsg");if(m2)m2.textContent="✔ Salvo em "+new Date().toLocaleTimeString()+" neste aparelho.";else alert("Salvo em "+new Date().toLocaleTimeString())};
+window.saveAllNow=function(){saveNow(true);render(true);var m2=document.getElementById("saveMsg");if(m2)m2.innerHTML="✔ Salvo em "+new Date().toLocaleTimeString()+" neste aparelho."+ghWarnLine()};
 
 function scoreBox(key,side,v){
   if(!isAdmin){return '<b style="font-size:18px">'+(v===""||v==null?"–":esc(v))+'</b>'}
@@ -551,6 +565,20 @@ function ghTryRaw(i,done,fail){
 }
 function b64u8(s){return btoa(unescape(encodeURIComponent(s)))}
 function storeLocal(){try{localStorage.setItem(LS_STATE,JSON.stringify(S))}catch(e){}}
+/* ultima versao sabidamente igual ao que esta no GitHub (para saber se falta publicar) */
+function ghLast(){try{return localStorage.getItem("copa3_gh_last")||""}catch(e){return ""}}
+function ghSetLast(v){try{localStorage.setItem("copa3_gh_last",v||"")}catch(e){}}
+function ghPending(){return (S.updatedAt||"")!==ghLast()}
+function teamCountNow(){var n=0;try{GROUPS.forEach(function(g){(S.teams[g]||[]).forEach(function(t){if(t&&t.name)n++})})}catch(e){}return n}
+function insCountNow(){return (S.inscritos||[]).length}
+/* aviso curto mostrado nas telas de edicao do admin */
+function ghWarnLine(){
+  if(!isAdmin)return "";
+  var c=ghCfg();if(!c)return "";
+  if(!ghToken())return ' <b style="color:#D71414">⚠ ainda só neste aparelho — ligue o banco online na aba Banco / Online</b>';
+  if(ghPending())return ' <b style="color:#D71414">⚠ falta publicar — aba Banco / Online → Publicar agora</b>';
+  return ' <span style="color:#0a7a2f;font-weight:700">✔ no banco online</span>';
+}
 window.saveGhCfg=function(){
   var v=(document.getElementById("ghRepo")||{}).value||"";
   v=v.trim().replace(/\.git$/i,"").replace(/\/+$/,"");
@@ -578,7 +606,7 @@ window.ghPublish=function(silent){
   storeLocal();
   var base="https://api.github.com/repos/"+c.owner+"/"+c.repo;
   var hdrs={"Authorization":"Bearer "+tk,"Accept":"application/vnd.github+json"};
-  ghMsg("ghMsg","Publicando…");
+  ghMsg("ghMsg","Publicando "+insCountNow()+" inscrito(s) / "+teamCountNow()+" time(s)…");
   // 1) confere repo/token e descobre a branch principal
   fetch(base,{headers:hdrs,cache:"no-store"})
   .then(function(r){if(!r.ok)throw r.status;return r.json()})
@@ -596,7 +624,12 @@ window.ghPublish=function(silent){
       return fetch(url,{method:"PUT",headers:h2,body:JSON.stringify(body)});
     });
   })
-  .then(function(r){if(!r.ok)throw 0;ghMsg("ghMsg","✔ Publicado no GitHub em "+new Date().toLocaleTimeString()+" (arquivo "+ghFile()+")");if(!silent)alert("Publicado! Os participantes já veem os dados atualizados.")})
+  .then(function(r){
+    if(!r.ok)throw 0;
+    ghSetLast(S.updatedAt);render(false);
+    ghMsg("ghMsg","✔ Publicado no GitHub em "+new Date().toLocaleTimeString()+" — "+insCountNow()+" inscrito(s), "+teamCountNow()+" time(s), "+Object.keys(S.scores||{}).length+" placar(es)");
+    if(!silent)alert("Publicado! Agora aparece em todos os navegadores.\n\n"+insCountNow()+" inscrito(s) • "+teamCountNow()+" time(s) no banco.");
+  })
   .catch(function(st){
     var d=(st===401||st===403)?"token sem permissão ou incorreto":(st===404?"repositório não encontrado (confira usuario/repo)":"falha de rede/permissão");
     ghMsg("ghMsg","✖ Não publicou: "+d+".");
@@ -608,10 +641,17 @@ window.ghPull=function(force){
   if(!c){if(force)alert("Configure primeiro o repositório do GitHub.");return}
   ghTryRaw(0,function(p){
     if(!p||!p.teams){if(force)alert("Arquivo sem dados válidos.");return}
-    if(countTeams(p)===0&&countTeams(S)>0){if(!force||!confirm("O repositório está VAZIO e este aparelho tem "+countTeams(S)+" times. Baixar vai APAGAR os times da tela. Confirmar?"))return}
-    if(!force&&p.updatedAt&&S.updatedAt&&countTeams(S)>0&&p.updatedAt<=S.updatedAt)return;
-    var had=countTeams(S);S=normalize(p);storeLocal();render(had===0||force===true);
-    if(force)alert("Dados baixados do GitHub ("+countTeams(S)+" times).");
+    var localN=countTeams(S),remoteN=countTeams(p);
+    if(remoteN===0&&localN>0){
+      if(force&&confirm("O repositório está VAZIO e este aparelho tem "+localN+" times.\n\nBaixar vai APAGAR os times da tela.\n\nEm vez disso, publique os dados deste aparelho (Publicar agora). Baixar mesmo assim?")){} else return;
+    }
+    if(!force){
+      // nunca trocar dados de trabalho local por um banco online com MENOS times
+      if(remoteN<localN)return;
+      if(p.updatedAt&&S.updatedAt&&localN>0&&p.updatedAt<=S.updatedAt)return;
+    }
+    var had=countTeams(S);S=normalize(p);storeLocal();ghSetLast(p.updatedAt||S.updatedAt||"");render(had===0||force===true);
+    if(force)alert("Dados baixados do GitHub ("+remoteN+" times).");
   },function(){if(force)alert("Não foi possível baixar. O arquivo "+ghFile()+" já existe no repositório (branch main) e o repositório é público?")});
 };
 function ghMsg(id,t){var m=document.getElementById(id);if(m)m.textContent=t}
@@ -621,13 +661,24 @@ function vSync(){
   var url=syncUrl();
   var size=0;try{size=(localStorage.getItem(LS_STATE)||"").length}catch(e){}
   var gh=ghCfg()||{owner:"",repo:"",branch:"main",file:"dados.json"};
-  var ghSet=(gh.owner&&gh.repo)?"":"";
   var hasTok=!!ghToken();
+  var statusCard;
+  if(!hasTok){
+    statusCard='<div class="card" style="border-left:6px solid #D71414"><h3 style="margin:0;color:#D71414">⚠ Banco online NÃO está ligado neste aparelho</h3>'
+    +'<p class="muted">Enquanto o token não for colado abaixo, o que você cadastra (inscritos, placares, mesas…) fica <b>só neste navegador</b> e não aparece para os outros. Cole o token, clique <b>Salvar</b> e depois <b>Publicar agora</b>.</p></div>';
+  } else if(ghPending()&&isAdmin){
+    statusCard='<div class="card" style="border-left:6px solid #D71414"><h3 style="margin:0;color:#D71414">⚠ Alterações ainda não publicadas</h3>'
+    +'<p class="muted">Existem mudanças neste aparelho que ainda não subiram para o GitHub. Clique <b>Publicar agora ⬆</b> para todos verem.</p></div>';
+  } else {
+    statusCard='<div class="card" style="border-left:6px solid #0a7a2f"><h3 style="margin:0;color:#0a7a2f">✔ Banco online ligado e em dia</h3>'
+    +'<p class="muted">Os dados estão no GitHub e aparecem em qualquer navegador. Última publicação: '+esc(ghLast()?new Date(ghLast()).toLocaleString():"—")+'</p></div>';
+  }
   var bkps=[];try{bkps=JSON.parse(localStorage.getItem(LS_BKP)||"[]")}catch(e){}
   var bl=bkps.map(function(b,i){var d=new Date(b.ts);return '<div class="row"><span class="muted">'+d.toLocaleString()+'</span>'+(isAdmin?'<button class="btn-small btn-line" onclick="restoreBkp('+i+')">Restaurar</button>':"")+'</div>'}).join("")||'<p class="muted">Sem backups ainda (criados a cada 5 min após alteração).</p>';
   return '<div class="card"><h2 style="margin:0">Banco de dados / Online</h2>'
   +'<p class="kv">Tudo fica guardado num arquivo <span class="mono">'+esc(gh.file||"dados.json")+'</span> dentro do seu <b>repositório do GitHub</b> — inscritos, grupos, placares, mesas, cards e imagens. Funciona no site publicado (GitHub Pages) <b>sem servidor ligado</b> e sem perder dados: cada publicação vira uma versão no histórico do repositório.</p>'
   +'<p class="muted">Tamanho neste aparelho: '+(size/1024).toFixed(1)+' KB • atualizado em: '+esc(S.updatedAt||"—")+'</p></div>'
+  +(isAdmin?statusCard:'')
   +'<div class="card"><h3>Banco online — GitHub (recomendado)</h3>'
   +'<p class="muted">Visitantes leem sozinhos, sem senha. Só o admin precisa do <b>token</b> para publicar.</p>'
   +'<div class="row"><input id="ghRepo" style="max-width:320px" placeholder="usuario/repositorio" value="'+esc(gh.owner&&gh.repo?gh.owner+"/"+gh.repo:"")+'">'
@@ -638,7 +689,9 @@ function vSync(){
   +(isAdmin?'<button class="btn-red btn-small" onclick="ghPublish()">Publicar agora ⬆</button>':'')
   +'<button class="btn-ghost btn-small" onclick="ghPull(true)">Baixar do GitHub ⬇</button></div>'
   +'<p class="muted" id="ghMsg"></p>'
-  +'<details class="muted" style="margin-top:6px"><summary>Como pegar o token (1 vez)</summary><ol style="margin:8px 0 0 18px;padding:0"><li>github.com → foto → <b>Settings</b></li><li><b>Developer settings</b> → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token</li><li>Em <b>Repository access</b>: Only select repositories → escolha o repositório da copa</li><li>Em <b>Permissions</b> → Repository permissions → <b>Contents: Read and write</b></li><li>Generate token e cole no campo acima</li></ol><p class="muted">O token fica só neste navegador. Não compartilhe prints dele.</p></details></div>'
+  +'<details class="muted" style="margin-top:6px"><summary><b>Como pegar o token (1 vez)</b></summary>'
+  +'<p style="margin:8px 0 4px"><a href="https://github.com/settings/tokens/new?scopes=public_repo&description=Copa%20-%20banco%20de%20dados" target="_blank" rel="noopener"><b>➜ Criar token rápido</b></a> (marque a opção <b>public_repo</b> → Generate token → copie). É o jeito mais simples.</p>'
+  +'<p class="muted">Ou, mais restrito (só este repositório):</p><ol style="margin:4px 0 0 18px;padding:0"><li>github.com → foto → <b>Settings</b></li><li><b>Developer settings</b> → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token</li><li>Em <b>Repository access</b>: Only select repositories → escolha <b>colorado</b></li><li>Em <b>Permissions</b> → Repository permissions → <b>Contents: Read and write</b></li><li>Generate token e cole no campo acima</li></ol><p class="muted">O token fica só neste navegador. Não compartilhe prints dele.</p></details></div>'
   +'<div class="card"><h3>2) Arquivo (backup manual)</h3><div class="row">'
   +(isAdmin?'<button class="btn-red" onclick="exportJSON()">⬇ Exportar JSON</button> <label class="btn-line btn-small" style="padding:9px 13px;cursor:pointer">⬆ Importar JSON<input type="file" accept=".json" class="hidden" onchange="importJSON(this)"></label> <button class="btn-ghost" onclick="copyJSON()">Copiar JSON</button>':'<p class="muted">Entre como admin para exportar/importar.</p>')
   +'</div><h4>Backups automáticos neste aparelho</h4>'+bl+'</div>'
