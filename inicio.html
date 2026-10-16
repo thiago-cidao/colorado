@@ -9,7 +9,6 @@
 .wrap{max-width:640px;margin:0 auto;padding:20px 14px 60px;text-align:center}
 .logo{position:relative;width:130px;height:130px;border-radius:50%;background:#fff;color:#D71414;display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:900;overflow:hidden;margin:0 auto;border:5px solid #fff;box-shadow:0 4px 18px rgba(0,0,0,.35)}
 .logo img{width:100%;height:100%;object-fit:cover}
-.banner{max-width:100%;border-radius:14px;margin:14px auto 0;display:block;max-height:220px;object-fit:cover}
 h1{margin:14px 0 12px;font-size:34px;text-shadow:0 2px 8px rgba(0,0,0,.4);letter-spacing:.5px}
 .sub{display:inline-block;background:#fff;color:#D71414;font-weight:900;font-size:16px;letter-spacing:2px;border-radius:999px;padding:8px 22px;margin:12px 0 4px;box-shadow:0 3px 10px rgba(0,0,0,.3)}
 .btn{display:inline-block;background:#fff;color:#D71414;font-weight:800;border-radius:12px;padding:13px 26px;text-decoration:none;font-size:17px;box-shadow:0 3px 10px rgba(0,0,0,.3);margin-bottom:6px}
@@ -25,6 +24,15 @@ h1{margin:14px 0 12px;font-size:34px;text-shadow:0 2px 8px rgba(0,0,0,.4);letter
 .spot .name{font-size:16px;font-weight:700}
 .spot .city{color:#777;font-size:14px;margin-top:2px}
 .spot.hasbg .city{color:#eee}
+/* card vertical: usa a imagem enviada como fundo, tamanho proporcional a ela */
+.spot.vert{max-width:330px;min-height:0;padding:0;aspect-ratio:var(--ar,3/4);max-height:74vh;align-items:stretch}
+.spot.vert::before{background:linear-gradient(rgba(0,0,0,0) 28%,rgba(0,0,0,.22) 52%,rgba(0,0,0,.82))}
+.spot.vert .spot-in{flex-direction:column;justify-content:flex-end;align-items:center;text-align:center;padding:18px 18px 24px;gap:12px}
+.spot.vert img{width:104px;height:104px}
+.spot.vert .ph{width:104px;height:104px;font-size:42px}
+.spot.vert .team{font-size:26px;margin:0}
+.spot.vert .name{font-size:17px}
+.spot.vert .city{font-size:14px}
 .nav{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:14px}
 .nav button{border:0;border-radius:999px;width:44px;height:44px;font-size:20px;font-weight:800;cursor:pointer;background:#fff;color:#D71414;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 .dots{display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap}
@@ -36,8 +44,7 @@ h1{margin:14px 0 12px;font-size:34px;text-shadow:0 2px 8px rgba(0,0,0,.4);letter
 </head>
 <body>
 <div class="wrap">
-  <div class="logo" id="logo">🏆<img src="logo.png" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;display:none" onload="this.style.display='block'" onerror="this.remove()"></div>
-  <img class="banner" id="banner" src="banner.jpg" style="display:none" onload="this.style.display='block'" onerror="this.style.display='none'">
+  <div class="logo" id="logo">🏆</div>
   <h1 id="evName">III COPA NADA VAI NOS SEPARAR</h1>
   <a class="btn" href="index.html">🏆 Ver campeonato</a><br>
   <p class="sub">BOTONISTAS CONFIRMADOS</p>
@@ -47,14 +54,52 @@ h1{margin:14px 0 12px;font-size:34px;text-shadow:0 2px 8px rgba(0,0,0,.4);letter
   <div class="count" id="count"></div>
 </div>
 <script>
-var cards=[],idx=0,timer=null,bannerBg="";
+var cards=[],idx=0,timer=null,bannerBg="",bgVert=false,bgKeyDone=null,bgVer="";
 function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+/* aplica a classe/estilo do fundo do card (mantendo vertical/horizontal) */
+function applyBgClass(){
+  var sp=document.getElementById("spot");if(!sp)return;
+  if(bannerBg){
+    try{sp.style.backgroundImage='url("'+String(bannerBg).replace(/"/g,"")+'")'}catch(e){}
+    sp.className=bgVert?"spot hasbg vert":"spot hasbg";
+  }else{
+    sp.style.backgroundImage="";
+    sp.className="spot";
+  }
+}
+/* evita cache do arquivo de imagem no GitHub/CDN */
+function bust(u){u=String(u||"");if(/^(data:|blob:)/i.test(u))return u;return u+(u.indexOf("?")>-1?"&":"?")+"v="+encodeURIComponent(bgVer)}
+/* procura a imagem de fundo do card, nesta ordem: ajuste salvo no banco > card-bg.* > banner do banco > banner.jpg */
+function resolveBg(state){
+  var key=(state&&state.spotBg)?String(state.spotBg):"";
+  bgVer=(state&&state.updatedAt)?String(state.updatedAt):"";
+  if(bgKeyDone===key)return;
+  bgKeyDone=key;
+  var cands=[];
+  if(key)cands.push(key);
+  cands.push("card-bg.jpg","card-bg.jpeg","card-bg.png","card-bg.webp");
+  if(state&&state.banner)cands.push(state.banner);
+  cands.push("banner.jpg");
+  (function tryNext(i){
+    if(i>=cands.length){bannerBg="";bgVert=false;applyBgClass();return}
+    var u=cands[i],im=new Image();
+    im.onload=function(){
+      bannerBg=u;
+      bgVert=!!(im.naturalWidth&&im.naturalHeight&&im.naturalHeight>im.naturalWidth);
+      var sp=document.getElementById("spot");
+      if(sp&&im.naturalWidth&&im.naturalHeight){try{sp.style.setProperty("--ar",im.naturalWidth+"/"+im.naturalHeight)}catch(e){}}
+      applyBgClass();
+    };
+    im.onerror=function(){tryNext(i+1)};
+    im.src=bust(u);
+  })(0);
+}
 function show(i){
   if(!cards.length){document.getElementById("spot").innerHTML='<p style="color:#777">Nenhum participante divulgado ainda.<br>Aguarde!</p>';document.getElementById("dots").innerHTML="";document.getElementById("count").textContent="";return}
   idx=(i+cards.length)%cards.length;
   var c=cards[idx];
   var sp=document.getElementById("spot");
-  if(bannerBg){sp.style.backgroundImage="url(\""+bannerBg.replace(/"/g,"")+"\")";sp.className="spot hasbg"}else{sp.style.backgroundImage="";sp.className="spot"}
+  applyBgClass();
   sp.innerHTML='<div class="spot-in">'
     +(c.photo?'<img src="'+c.photo+'">':'<div class="ph">👤</div>')
     +'<div><div class="team">'+esc(c.team||"—")+'</div>'
@@ -70,13 +115,12 @@ function restart(){clearInterval(timer);timer=setInterval(function(){show(idx+1)
 function render(state){
   if(state&&state.eventName)document.getElementById("evName").textContent=state.eventName;
   if(state&&state.logo)document.getElementById("logo").innerHTML='<img src="'+state.logo+'">';
-  if(state&&state.banner){var b=document.getElementById("banner");b.src=state.banner;b.style.display="block";bannerBg=state.banner}
-  if(!bannerBg){var t=new Image();t.onload=function(){bannerBg="banner.jpg";show(idx)};t.src="banner.jpg"}
   var list=null;
   if(state&&Array.isArray(state.spotlight)&&state.spotlight.length)list=state.spotlight;
   else if(state&&Array.isArray(state.inscritos)&&state.inscritos.length)list=cardsFromInscritos(state.inscritos);
-  if(list&&list.length){cards=list;if(idx>=cards.length)idx=0;show(idx)}
-  else if(!cards.length)show(0);
+  if(list&&list.length){cards=list;if(idx>=cards.length)idx=0}
+  show(idx);
+  resolveBg(state);
 }
 function local(){try{var raw=localStorage.getItem("copa3_state_v1");if(raw)return JSON.parse(raw)}catch(e){}return null}
 /* aceita qualquer estado valido: basta ter banner, logo, nome, inscritos, spotlight ou times */
