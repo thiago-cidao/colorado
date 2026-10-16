@@ -20,7 +20,7 @@ button{border:0;border-radius:10px;padding:9px 13px;font-weight:700;cursor:point
 .hero img.banner{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.85}
 .hero .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:15px;background:repeating-linear-gradient(45deg,#232327,#232327 12px,#1d1d20 12px,#1d1d20 24px)}
 .hero .inner{position:relative;padding:70px 16px 16px;display:flex;gap:14px;align-items:center;width:100%;background:linear-gradient(transparent,rgba(0,0,0,.65))}
-.logo{width:124px;height:124px;border-radius:50%;background:#fff;color:var(--red);display:flex;align-items:center;justify-content:center;font-size:46px;font-weight:900;overflow:hidden;flex-shrink:0;border:4px solid #fff}
+.logo{position:relative;width:124px;height:124px;border-radius:50%;background:#fff;color:var(--red);display:flex;align-items:center;justify-content:center;font-size:46px;font-weight:900;overflow:hidden;flex-shrink:0;border:4px solid #fff}
 .logo img{width:100%;height:100%;object-fit:cover}
 .hero h1{margin:0;font-size:32px;text-shadow:0 2px 8px rgba(0,0,0,.6)}
 .hero small{opacity:.85}
@@ -186,7 +186,7 @@ function mesaKO(g){var m=S.mesa["K"+g.id];if(m!=null&&m!=="")return m;return g.m
 
 /* ===== SAVE (debounce 4s) + BACKUP + SYNC ===== */
 var saveT=null,renderT=null;
-var LS_BKP="copa3_backups_v1", LS_SYNC="copa3_sync_url";
+var LS_BKP="copa3_backups_v1", LS_SYNC="copa3_sync_url", LS_GH="copa3_gh", LS_GH_TOKEN="copa3_gh_token";
 function setSaveStatus(t){document.getElementById("saveStatus").textContent=t}
 function persist(force){
   try{S.updatedAt=new Date().toISOString()}catch(e){}
@@ -198,7 +198,7 @@ function persist(force){
     if(force||!last||(Date.now()-last.ts>5*60*1000)){var slim=Object.assign({},S,{banner:"",logo:"",spotlight:(S.spotlight||[]).map(function(c){return{photo:"",team:c.team,name:c.name,city:c.city}})});var slimN=0;try{GROUPS.forEach(function(g){(slim.teams[g]||[]).forEach(function(t){if(t&&t.name)slimN++})})}catch(e3){}var lastN=-1;try{if(last)GROUPS.forEach(function(g){((last.state||{}).teams||{})[g]}) }catch(e4){}try{if(last){lastN=0;GROUPS.forEach(function(g){(((last.state||{}).teams||{})[g]||[]).forEach(function(t){if(t&&t.name)lastN++})})}}catch(e5){}if(!(slimN===0&&lastN>0)){arr.push({ts:Date.now(),state:slim});while(arr.length>5)arr.shift();try{localStorage.setItem(LS_BKP,JSON.stringify(arr))}catch(e2){}}}
   }catch(e){}
   setSaveStatus("● salvo "+new Date().toLocaleTimeString());
-  queuePush();
+  queuePush();queueGhPush();
 }
 function markDirty(){
   setSaveStatus("● salvando…");
@@ -248,8 +248,8 @@ function render(full){
 }
 function renderHero(){
   var h=document.getElementById("hero");
-  var bg=S.banner?'<img class="banner" src="'+S.banner+'">':'<div class="ph">📷 Nenhum banner enviado</div>';
-  var lg=S.logo?'<div class="logo"><img src="'+S.logo+'"></div>':'<div class="logo">🏆</div>';
+  var bg=S.banner?'<img class="banner" src="'+S.banner+'">':'<img class="banner" src="banner.jpg" onerror="this.outerHTML=\'<div class=&quot;ph&quot;>📷 Nenhum banner enviado</div>\'">';
+  var lg=S.logo?'<div class="logo"><img src="'+S.logo+'"></div>':'<div class="logo" id="logoDef">🏆<img src="logo.png" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" onerror="this.remove()"></div>';
   h.innerHTML=bg+'<div class="inner">'+lg+'<div style="flex:1"><h1>'+esc(S.eventName||"")+'</h1><small>Futebol de mesa • 32 times • 8 grupos • 3 séries</small>'+
   (isAdmin?'<div class="hero-edit"><label class="btn-small btn-ghost" style="cursor:pointer">Banner<input type="file" accept="image/*" class="hidden" onchange="upBanner(this)"></label><label class="btn-small btn-ghost" style="cursor:pointer">Logo<input type="file" accept="image/*" class="hidden" onchange="upLogo(this)"></label></div>':"")+'</div></div>';
 }
@@ -516,23 +516,126 @@ function vSpot(){
   return h;
 }
 
-/* ===== BANCO / ONLINE: export + import + servidor ===== */
+/* ===== BANCO / ONLINE: export + import + servidor + GitHub ===== */
 function syncUrl(){try{return (localStorage.getItem(LS_SYNC)||"").replace(/\/$/,"")}catch(e){return ""}}
+
+/* ----- Banco no GitHub (arquivo JSON no repositorio, sem servidor ligado) ----- */
+function ghCfg(){
+  var c=null;try{c=JSON.parse(localStorage.getItem(LS_GH)||"null")}catch(e){}
+  if(c&&c.owner&&c.repo)return c;
+  var m=/^([^.]+)\.github\.io$/i.exec(location.hostname);
+  if(m){var parts=location.pathname.split("/").filter(Boolean);if(parts[0])return{owner:m[1],repo:parts[0],branch:"main",file:"dados.json"}}
+  return null;
+}
+function ghToken(){try{return localStorage.getItem(LS_GH_TOKEN)||""}catch(e){return ""}}
+function ghFile(){var c=ghCfg();return (c&&c.file)||"dados.json"}
+function ghBranch(){var c=ghCfg();return (c&&c.branch)||"main"}
+function ghRawUrl(){var u=ghRawUrls();return u.length?u[0]:""}
+function ghRawUrls(){
+  var c=ghCfg();if(!c)return [];
+  var brs=[];var b=ghBranch();if(brs.indexOf(b)<0)brs.push(b);
+  if(brs.indexOf("main")<0)brs.push("main");
+  if(brs.indexOf("master")<0)brs.push("master");
+  var base="https://raw.githubusercontent.com/"+c.owner+"/"+c.repo+"/";
+  return brs.map(function(x){return base+encodeURIComponent(x)+"/"+ghFile()+"?t="+Date.now()});
+}
+function ghTryRaw(i,done,fail){
+  var urls=ghRawUrls();
+  if(i>=urls.length){fail();return}
+  fetch(urls[i],{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(p){done(p)}).catch(function(){ghTryRaw(i+1,done,fail)});
+}
+function b64u8(s){return btoa(unescape(encodeURIComponent(s)))}
+function storeLocal(){try{localStorage.setItem(LS_STATE,JSON.stringify(S))}catch(e){}}
+window.saveGhCfg=function(){
+  var v=(document.getElementById("ghRepo")||{}).value||"";
+  v=v.trim().replace(/\.git$/i,"").replace(/\/+$/,"");
+  var owner="",repo="",m=/github\.com\/([^\/\s]+)\/([^\/\s]+)/i.exec(v);
+  if(m){owner=m[1];repo=m[2]}else{var p=v.split("/").filter(Boolean);owner=p[0]||"";repo=p[1]||""}
+  if(!owner||!repo){alert("Informe o repositório como usuario/repositorio (ou cole o link do GitHub).");return}
+  var br=((document.getElementById("ghBranch")||{}).value||"main").trim()||"main";
+  var fl=((document.getElementById("ghFile")||{}).value||"dados.json").trim()||"dados.json";
+  try{localStorage.setItem(LS_GH,JSON.stringify({owner:owner,repo:repo,branch:br,file:fl}))}catch(e){}
+  var tk=(document.getElementById("ghToken")||{}).value||"";
+  if(tk.trim())try{localStorage.setItem(LS_GH_TOKEN,tk.trim())}catch(e){}
+  render(true);alert("Configuração salva: "+owner+"/"+repo);
+};
+window.ghPublish=function(silent){
+  var c=ghCfg();
+  if(!c){if(!silent)alert("Configure primeiro o repositório do GitHub.");return}
+  var tk=ghToken();
+  if(!tk){if(!silent)alert("Falta o token do GitHub (só o admin precisa — veja as instruções na página).");return}
+  try{S.updatedAt=new Date().toISOString()}catch(e){}
+  storeLocal();
+  var base="https://api.github.com/repos/"+c.owner+"/"+c.repo;
+  var hdrs={"Authorization":"Bearer "+tk,"Accept":"application/vnd.github+json"};
+  ghMsg("ghMsg","Publicando…");
+  // 1) confere repo/token e descobre a branch principal
+  fetch(base,{headers:hdrs,cache:"no-store"})
+  .then(function(r){if(!r.ok)throw r.status;return r.json()})
+  .then(function(info){
+    var br=(info&&info.default_branch)||ghBranch();
+    var url=base+"/contents/"+encodeURIComponent(ghFile());
+    // 2) pega o sha atual (se o arquivo já existir)
+    return fetch(url+"?ref="+encodeURIComponent(br),{headers:hdrs,cache:"no-store"})
+    .then(function(r){return r.ok?r.json():null})
+    .then(function(fi){
+      var body={message:"Copa: dados "+new Date().toISOString(),content:b64u8(JSON.stringify(S)),branch:br};
+      if(fi&&fi.sha)body.sha=fi.sha;
+      var h2={"Content-Type":"application/json"};for(var k in hdrs)h2[k]=hdrs[k];
+      // 3) grava
+      return fetch(url,{method:"PUT",headers:h2,body:JSON.stringify(body)});
+    });
+  })
+  .then(function(r){if(!r.ok)throw 0;ghMsg("ghMsg","✔ Publicado no GitHub em "+new Date().toLocaleTimeString()+" (arquivo "+ghFile()+")");if(!silent)alert("Publicado! Os participantes já veem os dados atualizados.")})
+  .catch(function(st){
+    var d=(st===401||st===403)?"token sem permissão ou incorreto":(st===404?"repositório não encontrado (confira usuario/repo)":"falha de rede/permissão");
+    ghMsg("ghMsg","✖ Não publicou: "+d+".");
+    if(!silent)alert("Não foi possível publicar ("+d+").\n\nConfira:\n1) repositório usuario/repo\n2) token com permissão Contents: Read and write");
+  });
+};
+window.ghPull=function(force){
+  var c=ghCfg();
+  if(!c){if(force)alert("Configure primeiro o repositório do GitHub.");return}
+  ghTryRaw(0,function(p){
+    if(!p||!p.teams){if(force)alert("Arquivo sem dados válidos.");return}
+    if(countTeams(p)===0&&countTeams(S)>0){if(!force||!confirm("O repositório está VAZIO e este aparelho tem "+countTeams(S)+" times. Baixar vai APAGAR os times da tela. Confirmar?"))return}
+    if(!force&&p.updatedAt&&S.updatedAt&&countTeams(S)>0&&p.updatedAt<=S.updatedAt)return;
+    var had=countTeams(S);S=normalize(p);storeLocal();render(had===0||force===true);
+    if(force)alert("Dados baixados do GitHub ("+countTeams(S)+" times).");
+  },function(){if(force)alert("Não foi possível baixar. O arquivo "+ghFile()+" já existe no repositório (branch main) e o repositório é público?")});
+};
+function ghMsg(id,t){var m=document.getElementById(id);if(m)m.textContent=t}
+var ghT=null;
+function queueGhPush(){clearTimeout(ghT);if(!isAdmin)return;var c=ghCfg();if(!c||!ghToken())return;ghT=setTimeout(function(){ghPublish(true)},60000)}
 function vSync(){
   var url=syncUrl();
   var size=0;try{size=(localStorage.getItem(LS_STATE)||"").length}catch(e){}
+  var gh=ghCfg()||{owner:"",repo:"",branch:"main",file:"dados.json"};
+  var ghSet=(gh.owner&&gh.repo)?"":"";
+  var hasTok=!!ghToken();
   var bkps=[];try{bkps=JSON.parse(localStorage.getItem(LS_BKP)||"[]")}catch(e){}
   var bl=bkps.map(function(b,i){var d=new Date(b.ts);return '<div class="row"><span class="muted">'+d.toLocaleString()+'</span>'+(isAdmin?'<button class="btn-small btn-line" onclick="restoreBkp('+i+')">Restaurar</button>':"")+'</div>'}).join("")||'<p class="muted">Sem backups ainda (criados a cada 5 min após alteração).</p>';
   return '<div class="card"><h2 style="margin:0">Banco de dados / Online</h2>'
-  +'<p class="kv">Hoje tudo fica no <b>localStorage deste navegador</b> (um único objeto JSON). Para rodar local e depois publicar: exporte o JSON e suba no servidor — os participantes abrem o link para <b>ver</b>, e quem tem a senha de admin <b>edita</b> resultados, mesas e times.</p>'
-  +'<p class="muted">Tamanho atual: '+(size/1024).toFixed(1)+' KB • atualizado em: '+esc(S.updatedAt||"—")+'</p></div>'
-  +'<div class="card"><h3>1) Arquivo (roda local)</h3><div class="row">'
+  +'<p class="kv">Tudo fica guardado num arquivo <span class="mono">'+esc(gh.file||"dados.json")+'</span> dentro do seu <b>repositório do GitHub</b> — inscritos, grupos, placares, mesas, cards e imagens. Funciona no site publicado (GitHub Pages) <b>sem servidor ligado</b> e sem perder dados: cada publicação vira uma versão no histórico do repositório.</p>'
+  +'<p class="muted">Tamanho neste aparelho: '+(size/1024).toFixed(1)+' KB • atualizado em: '+esc(S.updatedAt||"—")+'</p></div>'
+  +'<div class="card"><h3>Banco online — GitHub (recomendado)</h3>'
+  +'<p class="muted">Visitantes leem sozinhos, sem senha. Só o admin precisa do <b>token</b> para publicar.</p>'
+  +'<div class="row"><input id="ghRepo" style="max-width:320px" placeholder="usuario/repositorio" value="'+esc(gh.owner&&gh.repo?gh.owner+"/"+gh.repo:"")+'">'
+  +'<input id="ghBranch" style="max-width:110px" placeholder="main" value="'+esc(gh.branch||"main")+'">'
+  +'<input id="ghFile" style="max-width:150px" placeholder="dados.json" value="'+esc(gh.file||"dados.json")+'"></div>'
+  +(isAdmin?'<div style="height:8px"></div><div class="row"><input id="ghToken" type="password" style="max-width:320px" placeholder="Token do GitHub (só admin)" value="'+(hasTok?"(token salvo)":"")+'"><button class="btn-line btn-small" onclick="saveGhCfg()">Salvar</button></div>':'')
+  +'<div class="row" style="margin-top:8px">'
+  +(isAdmin?'<button class="btn-red btn-small" onclick="ghPublish()">Publicar agora ⬆</button>':'')
+  +'<button class="btn-ghost btn-small" onclick="ghPull(true)">Baixar do GitHub ⬇</button></div>'
+  +'<p class="muted" id="ghMsg"></p>'
+  +'<details class="muted" style="margin-top:6px"><summary>Como pegar o token (1 vez)</summary><ol style="margin:8px 0 0 18px;padding:0"><li>github.com → foto → <b>Settings</b></li><li><b>Developer settings</b> → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token</li><li>Em <b>Repository access</b>: Only select repositories → escolha o repositório da copa</li><li>Em <b>Permissions</b> → Repository permissions → <b>Contents: Read and write</b></li><li>Generate token e cole no campo acima</li></ol><p class="muted">O token fica só neste navegador. Não compartilhe prints dele.</p></details></div>'
+  +'<div class="card"><h3>2) Arquivo (backup manual)</h3><div class="row">'
   +(isAdmin?'<button class="btn-red" onclick="exportJSON()">⬇ Exportar JSON</button> <label class="btn-line btn-small" style="padding:9px 13px;cursor:pointer">⬆ Importar JSON<input type="file" accept=".json" class="hidden" onchange="importJSON(this)"></label> <button class="btn-ghost" onclick="copyJSON()">Copiar JSON</button>':'<p class="muted">Entre como admin para exportar/importar.</p>')
   +'</div><h4>Backups automáticos neste aparelho</h4>'+bl+'</div>'
-  +'<div class="card"><h3>2) Servidor online (participantes veem, admin edita)</h3>'
-  +'<p class="muted">Suba a pasta <span class="mono">server/</span> (já criada) num Render/Railway/etc. Depois cole aqui a URL, ex.: https://sua-copa.onrender.com</p>'
+  +'<div class="card"><h3>3) Servidor próprio (opcional)</h3>'
+  +'<p class="muted">Alternativa avançada: a pasta <span class="mono">server/</span> já pronta para Render/Railway. Só use se quiser rodar um servidor seu.</p>'
   +'<div class="row"><input id="syncUrl" style="max-width:340px" placeholder="https://..." value="'+esc(url)+'">'
-  +(isAdmin?'<button class="btn-line btn-small" onclick="saveSyncUrl()">Salvar URL</button> <button class="btn-red btn-small" onclick="pushOnline()">Publicar agora ⬆</button>':'')
+  +(isAdmin?'<button class="btn-line btn-small" onclick="saveSyncUrl()">Salvar URL</button> <button class="btn-red btn-small" onclick="pushOnline()">Publicar no servidor ⬆</button>':'')
   +'<button class="btn-ghost btn-small" onclick="pullOnline()">Baixar do servidor ⬇</button></div>'
   +'<p class="muted" id="syncMsg"></p><p class="muted">Leitura (GET /api/state) é pública. Escrita (PUT /api/state) exige a senha de admin (enviada como hash SHA-256 no cabeçalho).</p></div>';
 }
@@ -573,6 +676,9 @@ window.upLogo=function(el){var f=el.files[0];if(!f)return;fileToResizedDataURL(f
 /* init */
 if(!hasHash()&&!localStorage.getItem("copa3_seen")){localStorage.setItem("copa3_seen","1")}
 render(true);
+/* Banco online (GitHub): le sozinho ao abrir e de tempo em tempo */
+if(ghCfg())ghPull(false);
+setInterval(function(){if(!isAdmin&&ghCfg())ghPull(false)},30000);
 </script>
 </body>
 </html>
