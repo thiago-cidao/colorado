@@ -87,6 +87,8 @@ function hhex(s){return sha256(unescape(encodeURIComponent(s)))}
 /* ===== CONSTANTES ===== */
 var GROUPS=["A","B","C","D","E","F","G","H"];
 var LS_STATE="copa3_state_v1", LS_HASH="copa3_admin_hash", LS_SESS="copa3_admin_session";
+/* Senha do admin já definida (hash SHA-256). Troque pela tela "Trocar senha" se quiser. */
+var ADMIN_HASH="a73060afb61efe1b7c817645d00c342df02407f65435a64c88d251d56150ff42";
 var SAVE_DELAY=4000;
 
 /* ===== ESTADO ===== */
@@ -208,16 +210,17 @@ function markDirty(){
 function saveNow(force){clearTimeout(saveT);persist(force)}
 
 /* ===== AUTH ===== */
-function hasHash(){return !!localStorage.getItem(LS_HASH)}
+function adminHash(){return localStorage.getItem(LS_HASH)||ADMIN_HASH}
+function hasHash(){return !!adminHash()}
 function openModal(html){document.getElementById("modal").innerHTML='<div class="modal-bg"><div class="modal">'+html+'</div></div>'}
 function closeModal(){document.getElementById("modal").innerHTML=""}
 function doLoginOk(){isAdmin=true;localStorage.setItem(LS_SESS,"1");closeModal();render(true)}
 function askSetPass(){openModal('<h3>Definir senha de administrador</h3><p class="muted">Primeira vez: crie a senha. Ela será guardada como hash SHA-256.</p><input id="pw1" type="password" placeholder="Nova senha"><div style="height:8px"></div><input id="pw2" type="password" placeholder="Confirmar senha"><div style="height:10px"></div><div class="row"><button class="btn-red" onclick="setPassGo()">Definir</button><button class="btn-ghost" onclick="closeModal()">Cancelar</button></div><p class="muted" id="pwErr"></p>')}
 window.setPassGo=function(){var a=document.getElementById("pw1").value,b=document.getElementById("pw2").value;if(!a){document.getElementById("pwErr").textContent="Digite uma senha.";return}if(a!==b){document.getElementById("pwErr").textContent="Confirmação diferente.";return}localStorage.setItem(LS_HASH,hhex(a));doLoginOk()};
 function askLogin(){openModal('<h3>Entrar como administrador</h3><input id="pw" type="password" placeholder="Senha"><div style="height:10px"></div><div class="row"><button class="btn-red" onclick="loginGo()">Entrar</button><button class="btn-ghost" onclick="closeModal()">Cancelar</button></div><p class="muted" id="pwErr"></p>')}
-window.loginGo=function(){var v=document.getElementById("pw").value;if(hhex(v)===localStorage.getItem(LS_HASH)){doLoginOk()}else{document.getElementById("pwErr").textContent="Senha incorreta."}};
+window.loginGo=function(){var v=document.getElementById("pw").value;if(hhex(v)===adminHash()){doLoginOk()}else{document.getElementById("pwErr").textContent="Senha incorreta."}};
 window.askChange=function(){openModal('<h3>Trocar senha</h3><input id="pw0" type="password" placeholder="Senha atual"><div style="height:8px"></div><input id="pw1" type="password" placeholder="Nova senha"><div style="height:10px"></div><div class="row"><button class="btn-red" onclick="changeGo()">Trocar</button><button class="btn-ghost" onclick="closeModal()">Cancelar</button></div><p class="muted" id="pwErr"></p>')};
-window.changeGo=function(){var o=document.getElementById("pw0").value,n=document.getElementById("pw1").value;if(hhex(o)!==localStorage.getItem(LS_HASH)){document.getElementById("pwErr").textContent="Atual incorreta.";return}if(!n){document.getElementById("pwErr").textContent="Digite a nova.";return}localStorage.setItem(LS_HASH,hhex(n));closeModal();render(true)};
+window.changeGo=function(){var o=document.getElementById("pw0").value,n=document.getElementById("pw1").value;if(hhex(o)!==adminHash()){document.getElementById("pwErr").textContent="Atual incorreta.";return}if(!n){document.getElementById("pwErr").textContent="Digite a nova.";return}localStorage.setItem(LS_HASH,hhex(n));closeModal();render(true)};
 window.logout=function(){isAdmin=false;localStorage.removeItem(LS_SESS);render(true)};
 window.closeModal=closeModal;
 
@@ -653,7 +656,7 @@ window.restoreBkp=function(i){try{var arr=JSON.parse(localStorage.getItem(LS_BKP
 window.saveSyncUrl=function(){var v=document.getElementById("syncUrl").value.trim();try{localStorage.setItem(LS_SYNC,v)}catch(e){}render(true)};
 var pushT=null;
 function queuePush(){clearTimeout(pushT);pushT=setTimeout(function(){if(syncUrl()&&isAdmin)pushOnline(true)},6000)}
-window.pushOnline=function(silent){var u=syncUrl();if(!u){if(!silent)alert("Configure a URL do servidor.");return}saveNow();fetch(u+"/api/state",{method:"PUT",headers:{"Content-Type":"application/json","x-admin-hash":(localStorage.getItem(LS_HASH)||"")},body:JSON.stringify(S)}).then(function(r){if(!r.ok)throw 0;var m=document.getElementById("syncMsg");if(m)m.textContent="Publicado em "+new Date().toLocaleTimeString()}).catch(function(){if(!silent)alert("Falha ao publicar. Confira URL e senha de admin (o servidor usa o mesmo hash).")})};
+window.pushOnline=function(silent){var u=syncUrl();if(!u){if(!silent)alert("Configure a URL do servidor.");return}saveNow();fetch(u+"/api/state",{method:"PUT",headers:{"Content-Type":"application/json","x-admin-hash":adminHash()},body:JSON.stringify(S)}).then(function(r){if(!r.ok)throw 0;var m=document.getElementById("syncMsg");if(m)m.textContent="Publicado em "+new Date().toLocaleTimeString()}).catch(function(){if(!silent)alert("Falha ao publicar. Confira URL e senha de admin (o servidor usa o mesmo hash).")})};
 function countTeams(st){try{var n=0;GROUPS.forEach(function(g){(st.teams[g]||[]).forEach(function(t){if(t&&t.name)n++})});return n}catch(e){return 0}}
 window.pullOnline=function(){var u=syncUrl();if(!u){alert("Configure a URL do servidor.");return}fetch(u+"/api/state").then(function(r){return r.json()}).then(function(p){if(!p||!p.teams)throw 0;if(countTeams(p)===0&&countTeams(S)>0){if(!confirm("O servidor está VAZIO e este aparelho tem "+countTeams(S)+" times. Baixar vai APAGAR os times da tela. Confirmar?"))return}S=normalize(p);saveNow();render(true)}).catch(function(){alert("Falha ao baixar do servidor.")})};
 setInterval(function(){var u=null;try{u=localStorage.getItem(LS_SYNC)}catch(e){}if(u&&!isAdmin)window.pullOnlineSilent()},30000);
