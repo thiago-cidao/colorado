@@ -26,8 +26,8 @@ h1{margin:14px 0 12px;font-size:34px;text-shadow:0 2px 8px rgba(0,0,0,.4);letter
 .spot.hasbg .city{color:#eee}
 /* card vertical: usa a imagem enviada como fundo, tamanho proporcional a ela */
 .spot.vert{max-width:330px;min-height:0;padding:0;aspect-ratio:var(--ar,3/4);max-height:74vh;align-items:stretch}
-.spot.vert::before{background:linear-gradient(rgba(0,0,0,0) 28%,rgba(0,0,0,.22) 52%,rgba(0,0,0,.82))}
-.spot.vert .spot-in{flex-direction:column;justify-content:flex-end;align-items:center;text-align:center;padding:18px 18px 24px;gap:12px}
+.spot.vert::before{background:linear-gradient(rgba(0,0,0,0) 36%,rgba(0,0,0,.3) 55%,rgba(0,0,0,.8))}
+.spot.vert .spot-in{position:absolute;left:0;right:0;top:33%;flex-direction:column;justify-content:flex-start;align-items:center;text-align:center;padding:0 16px;gap:10px}
 .spot.vert img{width:104px;height:104px}
 .spot.vert .ph{width:104px;height:104px;font-size:42px}
 .spot.vert .team{font-size:26px;margin:0}
@@ -46,8 +46,7 @@ h1{margin:14px 0 12px;font-size:34px;text-shadow:0 2px 8px rgba(0,0,0,.4);letter
 <div class="wrap">
   <div class="logo" id="logo">🏆</div>
   <h1 id="evName">III COPA NADA VAI NOS SEPARAR</h1>
-  <a class="btn" href="index.html">🏆 Ver campeonato</a><br>
-  <p class="sub">BOTONISTAS CONFIRMADOS</p>
+  <a class="btn" href="index.html">🏆 Ver campeonato</a>
   <div class="spot" id="spot"><p style="color:#777">Carregando participantes…</p></div>
   <div class="nav"><button onclick="go(-1)">‹</button><button onclick="go(1)">›</button></div>
   <div class="dots" id="dots"></div>
@@ -94,6 +93,7 @@ function resolveBg(state){
     im.src=bust(u);
   })(0);
 }
+function phFail(el){var d=document.createElement("div");d.className="ph";d.textContent="👤";if(el&&el.parentNode)el.parentNode.replaceChild(d,el)}
 function show(i){
   if(!cards.length){document.getElementById("spot").innerHTML='<p style="color:#777">Nenhum participante divulgado ainda.<br>Aguarde!</p>';document.getElementById("dots").innerHTML="";document.getElementById("count").textContent="";return}
   idx=(i+cards.length)%cards.length;
@@ -101,7 +101,7 @@ function show(i){
   var sp=document.getElementById("spot");
   applyBgClass();
   sp.innerHTML='<div class="spot-in">'
-    +(c.photo?'<img src="'+c.photo+'">':'<div class="ph">👤</div>')
+    +(c.photo?'<img src="'+c.photo+'" onerror="phFail(this)">':'<div class="ph">👤</div>')
     +'<div><div class="team">'+esc(c.team||"—")+'</div>'
     +(c.name?'<div class="name">'+esc(c.name)+'</div>':"")
     +(c.city?'<div class="city">'+esc(c.city)+'</div>':"")

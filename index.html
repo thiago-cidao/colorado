@@ -60,7 +60,7 @@ input[readonly]{background:#f7f7f8;color:#333}
 tr.q-ouro td{background:#fdf6dd}tr.q-prata td{background:#eef1f5}tr.q-bronze td{background:#fbeede}tr.tied td{background:#fff7d6}
 .pos-n{display:inline-block;min-width:24px;font-weight:800;border-radius:8px;padding:1px 6px;color:#fff;text-align:center}.pos-1,.pos-2{background:#c9a227}.pos-3{background:#5b6472}.pos-4{background:#8a5a2b}
 .team-row{background:#fafafa;border:1px solid #e6e6e9;border-radius:12px;padding:10px 12px;margin:0 0 10px;display:flex;gap:10px;align-items:center}.team-num{background:#D71414;color:#fff;font-weight:800;font-size:12px;border-radius:999px;min-width:34px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0}.team-row.editing{border:2px solid var(--red);background:#fff}.team-info{flex:1;min-width:0}.team-info .nm{font-weight:800;font-size:15px}.team-info .sub{color:var(--mut);font-size:13px}
-.insc{flex-direction:column;align-items:stretch}.insc-top{display:flex;gap:10px;align-items:center}.insc-top .nm{flex:1;font-weight:800;font-size:15px}.insc-bottom{display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap}.insc-bottom .sub{flex:1;color:var(--mut);font-size:13px;min-width:120px}.insc-bottom select{width:auto;min-width:110px}
+.insc{flex-direction:column;align-items:stretch}.insc-top{display:flex;gap:10px;align-items:center}.insc-top .nm{flex:1;font-weight:800;font-size:15px}.insc-bottom{display:flex;gap:10px;align-items:center;margin-top:6px;flex-wrap:wrap}.insc-bottom .sub{flex:1;color:var(--mut);font-size:13px;min-width:120px}.insc-bottom select{width:auto;min-width:110px}.av{width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2);flex-shrink:0}
 .kv{font-size:13px}
 details.danger{border:2px dashed var(--red);border-radius:12px;padding:12px}
 .hero-edit{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
@@ -326,7 +326,7 @@ function vTeams(){
   var rows=(S.inscritos||[]).map(function(t,i){
     var sub=((t.player?esc(t.player):"")+(t.player&&t.city?" · ":"")+(t.city?esc(t.city):""));
     if(!isAdmin){
-      return '<div class="team-row insc"><div class="insc-top"><span class="team-num">'+(i+1)+'</span><span class="nm">'+esc(t.name||"(sem nome)")+'</span></div><div class="insc-bottom"><span class="sub">'+esc([t.player,t.city].filter(Boolean).join(" · ")||"—")+'</span><span class="pill">Grupo '+(t.group||"—")+'</span></div></div>';
+      return '<div class="team-row insc"><div class="insc-top"><span class="team-num">'+(i+1)+'</span>'+(t.photo?'<img class="av" src="'+esc(t.photo)+'" onerror="this.remove()">':"")+'<span class="nm">'+esc(t.name||"(sem nome)")+'</span></div><div class="insc-bottom"><span class="sub">'+esc([t.player,t.city].filter(Boolean).join(" · ")||"—")+'</span><span class="pill">Grupo '+(t.group||"—")+'</span></div></div>';
     }
     if(editingInsc===i){
       return '<div class="team-row editing"><span class="team-num">'+(i+1)+'</span><div class="team-info"><b>Editando</b><div class="grid3" style="margin-top:6px">'+
@@ -336,8 +336,11 @@ function vTeams(){
       '</div><div class="row" style="margin-top:8px"><label>Grupo <select id="ins-g">'+[""].concat(GROUPS).map(function(g){return '<option value="'+g+'" '+(t.group===g?"selected":"")+'>'+(g||"— sem grupo —")+'</option>'}).join("")+'</select></label>'
       +'<button class="btn-red btn-small" onclick="saveInsc('+i+')">💾 Salvar</button><button class="btn-ghost btn-small" onclick="cancelInsc()">Cancelar</button><button class="btn-ghost btn-small" onclick="delInsc('+i+')">Excluir</button></div></div></div>';
     }
-    return '<div class="team-row insc"><div class="insc-top"><span class="team-num">'+(i+1)+'</span><span class="nm">'+esc(t.name||"(sem nome)")+'</span><button class="btn-line btn-small" onclick="editInsc('+i+')">✏️ Editar</button></div>'
-    +'<div class="insc-bottom">'+(sub?'<span class="sub">'+sub+'</span>':"")+'<label class="muted">Grupo <select onchange="setInscGroup('+i+',this.value)" title="Grupo">'+[""].concat(GROUPS).map(function(g){return '<option value="'+g+'" '+(t.group===g?"selected":"")+'>'+(g||"Selecionar grupo")+'</option>'}).join("")+'</select></label></div></div>';
+    return '<div class="team-row insc"><div class="insc-top"><span class="team-num">'+(i+1)+'</span>'+(t.photo?'<img class="av" src="'+esc(t.photo)+'" onerror="this.remove()">':"")+'<span class="nm">'+esc(t.name||"(sem nome)")+'</span><button class="btn-line btn-small" onclick="editInsc('+i+')">✏️ Editar</button></div>'
+    +'<div class="insc-bottom">'+(sub?'<span class="sub">'+sub+'</span>':"")
+    +'<label class="btn-line btn-small" style="padding:6px 10px;cursor:pointer" title="Foto do botonista (aparece no card da página inicial)">📷 '+(t.photo?"Trocar foto":"Foto")+'<input type="file" accept="image/*" class="hidden" onchange="upInscPhoto(this,'+i+')"></label>'
+    +(t.photo?'<button class="btn-small btn-ghost" onclick="delInscPhoto('+i+')" title="Remover foto">✕</button>':"")
+    +'<label class="muted">Grupo <select onchange="setInscGroup('+i+',this.value)" title="Grupo">'+[""].concat(GROUPS).map(function(g){return '<option value="'+g+'" '+(t.group===g?"selected":"")+'>'+(g||"Selecionar grupo")+'</option>'}).join("")+'</select></label></div></div>';
   }).join("")||'<div class="card"><p class="muted">Nenhum inscrito ainda.</p></div>';
   if(editingInsc===-1){
     rows='<div class="team-row editing"><span class="team-num">＋</span><div class="team-info"><b>Novo inscrito</b><div class="grid3" style="margin-top:6px">'+
@@ -354,11 +357,48 @@ window.saveInsc=function(i){
   var n=document.getElementById("ins-n"),p=document.getElementById("ins-p"),c=document.getElementById("ins-c"),g=document.getElementById("ins-g");
   if(!n||!n.value.trim()){alert("Nome do time é obrigatório.");return}
   var rec={name:n.value.trim(),player:p?p.value.trim():"",city:c?c.value.trim():"",group:g?g.value:""};
+  if(i!==-1&&S.inscritos[i]&&S.inscritos[i].photo)rec.photo=S.inscritos[i].photo;
   if(rec.group&&groupCount(rec.group)>=4&&(i===-1||S.inscritos[i].group!==rec.group)){alert("Grupo "+rec.group+" já tem 4 times.");return}
   if(i===-1){if(S.inscritos.length>=32){alert("Limite de 32 inscritos.");return}S.inscritos.push(rec)}else S.inscritos[i]=rec;
   S.teams=distribute(S.inscritos);editingInsc=null;saveAllNow();render(true);
 };
 window.delInsc=function(i){if(!confirm("Excluir este inscrito?"))return;S.inscritos.splice(i,1);S.teams=distribute(S.inscritos);editingInsc=null;saveAllNow();render(true)};
+/* ===== FOTOS DOS BOTONISTAS (vao como arquivo para o repositorio, nao no dados.json) ===== */
+function slugFile(s){return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")||("insc-"+Date.now().toString(36))}
+function ghPutFile(path,content,done){
+  var c=ghCfg(),tk=ghToken();
+  if(!c||!tk){done(401);return}
+  var base="https://api.github.com/repos/"+c.owner+"/"+c.repo;
+  var hdrs={"Authorization":"Bearer "+tk,"Accept":"application/vnd.github+json"};
+  var url=base+"/contents/"+String(path).split("/").map(encodeURIComponent).join("/");
+  fetch(base,{headers:hdrs,cache:"no-store"}).then(function(r){if(!r.ok)throw r.status;return r.json()}).then(function(info){
+    var br=(info&&info.default_branch)||ghBranch();
+    return fetch(url+"?ref="+encodeURIComponent(br),{headers:hdrs,cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(fi){
+      var body={message:"Copa: "+path,content:content,branch:br};
+      if(fi&&fi.sha)body.sha=fi.sha;
+      var h2={"Content-Type":"application/json"};for(var k in hdrs)h2[k]=hdrs[k];
+      return fetch(url,{method:"PUT",headers:h2,body:JSON.stringify(body)});
+    });
+  }).then(function(r){if(!r.ok)throw (r&&r.status)||0;done(null)}).catch(function(st){done(st||"erro")});
+}
+window.upInscPhoto=function(el,i){
+  var f=el.files[0];try{el.value=""}catch(e){}
+  if(!f)return;
+  if(!ghCfg()||!ghToken()){alert("Para enviar a foto é preciso ter o banco online ligado (token salvo).\n\nVá em “Banco / Online”, cole o token e clique Salvar.");return}
+  var t=(S.inscritos||[])[i];if(!t)return;
+  fileToResizedDataURL(f,420,420,0.85,function(url){
+    var path="fotos/"+slugFile(t.name||("insc-"+(i+1)))+".jpg";
+    var b64=String(url).split(",")[1];
+    var m=document.getElementById("saveMsg");if(m)m.innerHTML="⏳ Enviando a foto para o GitHub…";
+    ghPutFile(path,b64,function(st){
+      if(st){alert("Não foi possível enviar a foto ("+(st===401?"falta o token":st)+").\n\nConfira a aba “Banco / Online”.");render(true);return}
+      t.photo=path;
+      saveAllNow();render(true);
+      var m2=document.getElementById("saveMsg");if(m2)m2.innerHTML="✔ Foto enviada e salva (“"+path+"”)."+ghWarnLine();
+    });
+  });
+};
+window.delInscPhoto=function(i){if(!confirm("Remover a foto deste inscrito?"))return;S.inscritos[i].photo="";saveAllNow();render(true)};
 window.setInscGroup=function(i,g){if(g&&groupCount(g)>=4&&S.inscritos[i].group!==g){alert("Grupo "+g+" já tem 4 times.");render(true);return}S.inscritos[i].group=g;S.teams=distribute(S.inscritos);saveAllNow();render(true)};
 window.openListModal=function(){openModal('<h3>📋 Colar lista de inscritos</h3><p class="muted">Um por linha. Formatos aceitos:<br><b>Time; Botonista; Cidade</b> — só o time é obrigatório.<br>Separadores: ponto-e-vírgula, vírgula, TAB ou |.<br>Ex:<br><span class="mono">Estrela do Norte; João; Rio Branco<br>Rio Futebol; Maria</span></p><textarea id="bulkList" rows="8" style="width:100%;border-radius:10px;border:1.5px solid #ddd;padding:9px" placeholder="Cole a lista aqui..."></textarea><div style="height:10px"></div><div class="row"><button class="btn-red" onclick="importList()">Gerar inscritos</button><button class="btn-ghost" onclick="closeModal()">Cancelar</button></div><p class="muted" id="bulkMsg"></p>')};
 window.importList=function(){
