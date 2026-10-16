@@ -58,9 +58,10 @@ function show(i){
   sp.innerHTML='<div class="spot-in">'
     +(c.photo?'<img src="'+c.photo+'">':'<div class="ph">👤</div>')
     +'<div><div class="team">'+esc(c.team||"—")+'</div>'
-    +'<div class="name">'+esc(c.name||"")+'</div>'
-    +'<div class="city">'+esc(c.city||"")+'</div></div></div>';
-  var d="";for(var k=0;k<cards.length;k++)d+='<span class="'+(k===idx?"on":"")+'" onclick="show('+k+');restart()"></span>';
+    +(c.name?'<div class="name">'+esc(c.name)+'</div>':"")
+    +(c.city?'<div class="city">'+esc(c.city)+'</div>':"")
+    +'</div></div>';
+  var d="";if(cards.length<=16)for(var k=0;k<cards.length;k++)d+='<span class="'+(k===idx?"on":"")+'" onclick="show('+k+');restart()"></span>';
   document.getElementById("dots").innerHTML=d;
   document.getElementById("count").textContent=(idx+1)+" de "+cards.length;
 }
@@ -71,11 +72,31 @@ function render(state){
   if(state&&state.logo)document.getElementById("logo").innerHTML='<img src="'+state.logo+'">';
   if(state&&state.banner){var b=document.getElementById("banner");b.src=state.banner;b.style.display="block";bannerBg=state.banner}
   if(!bannerBg){var t=new Image();t.onload=function(){bannerBg="banner.jpg";show(idx)};t.src="banner.jpg"}
-  if(state&&Array.isArray(state.spotlight)&&state.spotlight.length){cards=state.spotlight;if(idx>=cards.length)idx=0;show(idx)}
+  var list=null;
+  if(state&&Array.isArray(state.spotlight)&&state.spotlight.length)list=state.spotlight;
+  else if(state&&Array.isArray(state.inscritos)&&state.inscritos.length)list=cardsFromInscritos(state.inscritos);
+  if(list&&list.length){cards=list;if(idx>=cards.length)idx=0;show(idx)}
   else if(!cards.length)show(0);
 }
 function local(){try{var raw=localStorage.getItem("copa3_state_v1");if(raw)return JSON.parse(raw)}catch(e){}return null}
-function hasContent(p){if(!p)return false;if(Array.isArray(p.spotlight)&&p.spotlight.length)return true;try{var n=0;["A","B","C","D","E","F","G","H"].forEach(function(g){((p.teams||{})[g]||[]).forEach(function(t){if(t&&t.name)n++})});return n>0}catch(e){return false}}
+/* aceita qualquer estado valido: basta ter banner, logo, nome, inscritos, spotlight ou times */
+function isState(p){
+  if(!p||typeof p!=="object")return false;
+  if(typeof p.eventName==="string"&&p.eventName)return true;
+  if(p.banner||p.logo)return true;
+  if(Array.isArray(p.inscritos)&&p.inscritos.length)return true;
+  if(Array.isArray(p.spotlight)&&p.spotlight.length)return true;
+  try{var n=0;["A","B","C","D","E","F","G","H"].forEach(function(g){((p.teams||{})[g]||[]).forEach(function(t){if(t&&t.name)n++})});return n>0}catch(e){return false}
+}
+/* se o admin ainda nao montou os cards de divulgacao, mostra os inscritos (botonistas confirmados) */
+function cardsFromInscritos(list){
+  return (list||[]).filter(function(x){return x&&(x.name||x.player)}).map(function(x){
+    var time=x.name||"";
+    var dono=x.player||"";
+    if(!time){time=dono;dono=""}
+    return {photo:x.photo||"",team:time,name:(dono&&dono!==time)?dono:"",city:x.city||(x.group?"Grupo "+x.group:"")};
+  });
+}
 function ghRawList(){
   var cfg={owner:"thiago-cidao",repo:"colorado",branch:"main",file:"dados.json"};
   try{
@@ -90,16 +111,16 @@ function ghRawList(){
   return brs.map(function(x){return base+encodeURIComponent(x)+"/"+(cfg.file||"dados.json")+"?t="+Date.now()});
 }
 function ghTry(i,urls){
-  if(i>=urls.length)return;
-  fetch(urls[i],{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(p){if(hasContent(p))render(p)}).catch(function(){ghTry(i+1,urls)});
+  if(i>=urls.length){if(!cards.length)show(0);return}
+  fetch(urls[i],{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(p){if(isState(p))render(p);else throw 0}).catch(function(){ghTry(i+1,urls)});
 }
 function load(){
-  var l=local();if(l&&hasContent(l))render(l);
+  var l=local();if(isState(l))render(l);
   // SOMENTE leitura destas fontes (nunca grava no localStorage)
   var urls=ghRawList();
   if(urls.length){ghTry(0,urls);return}
   var u="";try{u=localStorage.getItem("copa3_sync_url")||""}catch(e){}
-  fetch(u?u.replace(/\/$/,"")+"/api/state":"api/state").then(function(r){return r.json()}).then(function(p){if(hasContent(p))render(p)}).catch(function(){});
+  fetch(u?u.replace(/\/$/,"")+"/api/state":"api/state").then(function(r){return r.json()}).then(function(p){if(isState(p))render(p)}).catch(function(){});
 }
 load();restart();setInterval(load,30000);
 </script>
