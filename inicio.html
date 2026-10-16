@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>III COPA NADA VAI NOS SEPARAR — Bem-vindos</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(160deg,#D71414,#8d0d0d);color:#fff;min-height:100vh}
+.wrap{max-width:640px;margin:0 auto;padding:20px 14px 60px;text-align:center}
+.logo{width:130px;height:130px;border-radius:50%;background:#fff;color:#D71414;display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:900;overflow:hidden;margin:0 auto;border:5px solid #fff;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.logo img{width:100%;height:100%;object-fit:cover}
+.banner{max-width:100%;border-radius:14px;margin:14px auto 0;display:block;max-height:220px;object-fit:cover}
+h1{margin:14px 0 12px;font-size:34px;text-shadow:0 2px 8px rgba(0,0,0,.4);letter-spacing:.5px}
+.sub{display:inline-block;background:#fff;color:#D71414;font-weight:900;font-size:16px;letter-spacing:2px;border-radius:999px;padding:8px 22px;margin:12px 0 4px;box-shadow:0 3px 10px rgba(0,0,0,.3)}
+.btn{display:inline-block;background:#fff;color:#D71414;font-weight:800;border-radius:12px;padding:13px 26px;text-decoration:none;font-size:17px;box-shadow:0 3px 10px rgba(0,0,0,.3);margin-bottom:6px}
+.spot{position:relative;background:#fff;color:#222;border-radius:18px;padding:18px;margin:22px auto 0;max-width:460px;box-shadow:0 6px 24px rgba(0,0,0,.35);min-height:170px;display:flex;gap:14px;align-items:center;text-align:left;overflow:hidden;background-size:cover;background-position:center}
+.spot::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.62),rgba(0,0,0,.62));display:none}
+.spot.hasbg{color:#fff}.spot.hasbg::before{display:block}
+.spot-in{position:relative;display:flex;gap:14px;align-items:center;width:100%}
+.spot img{width:110px;height:110px;object-fit:cover;border-radius:50%;border:4px solid #fff;flex-shrink:0}
+.spot .ph{width:110px;height:110px;border-radius:50%;background:#f1f1f3;color:#D71414;font-size:48px;display:flex;align-items:center;justify-content:center;border:4px solid #fff;flex-shrink:0}
+.spot.hasbg .ph{background:rgba(255,255,255,.9)}
+.spot .team{font-size:20px;font-weight:900;margin:0 0 2px;color:#D71414;text-shadow:none}
+.spot.hasbg .team{color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.6)}
+.spot .name{font-size:16px;font-weight:700}
+.spot .city{color:#777;font-size:14px;margin-top:2px}
+.spot.hasbg .city{color:#eee}
+.nav{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:14px}
+.nav button{border:0;border-radius:999px;width:44px;height:44px;font-size:20px;font-weight:800;cursor:pointer;background:#fff;color:#D71414;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.dots{display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.dots span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.4);cursor:pointer}
+.dots span.on{background:#fff}
+.count{font-size:13px;opacity:.9;margin-top:8px}
+.muted{opacity:.85;font-size:13px;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo" id="logo">🏆</div>
+  <img class="banner" id="banner" style="display:none">
+  <h1 id="evName">III COPA NADA VAI NOS SEPARAR</h1>
+  <a class="btn" href="index.html">🏆 Ver campeonato</a><br>
+  <p class="sub">BOTONISTAS CONFIRMADOS</p>
+  <div class="spot" id="spot"><p style="color:#777">Carregando participantes…</p></div>
+  <div class="nav"><button onclick="go(-1)">‹</button><button onclick="go(1)">›</button></div>
+  <div class="dots" id="dots"></div>
+  <div class="count" id="count"></div>
+</div>
+<script>
+var cards=[],idx=0,timer=null,bannerBg="";
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function show(i){
+  if(!cards.length){document.getElementById("spot").innerHTML='<p style="color:#777">Nenhum participante divulgado ainda.<br>Aguarde!</p>';document.getElementById("dots").innerHTML="";document.getElementById("count").textContent="";return}
+  idx=(i+cards.length)%cards.length;
+  var c=cards[idx];
+  var sp=document.getElementById("spot");
+  if(bannerBg){sp.style.backgroundImage="url(\""+bannerBg.replace(/"/g,"")+"\")";sp.className="spot hasbg"}else{sp.style.backgroundImage="";sp.className="spot"}
+  sp.innerHTML='<div class="spot-in">'
+    +(c.photo?'<img src="'+c.photo+'">':'<div class="ph">👤</div>')
+    +'<div><div class="team">'+esc(c.team||"—")+'</div>'
+    +'<div class="name">'+esc(c.name||"")+'</div>'
+    +'<div class="city">'+esc(c.city||"")+'</div></div></div>';
+  var d="";for(var k=0;k<cards.length;k++)d+='<span class="'+(k===idx?"on":"")+'" onclick="show('+k+');restart()"></span>';
+  document.getElementById("dots").innerHTML=d;
+  document.getElementById("count").textContent=(idx+1)+" de "+cards.length;
+}
+function go(d){show(idx+d);restart()}
+function restart(){clearInterval(timer);timer=setInterval(function(){show(idx+1)},5000)}
+function render(state){
+  if(state&&state.eventName)document.getElementById("evName").textContent=state.eventName;
+  if(state&&state.logo)document.getElementById("logo").innerHTML='<img src="'+state.logo+'">';
+  if(state&&state.banner){var b=document.getElementById("banner");b.src=state.banner;b.style.display="block";bannerBg=state.banner}
+  if(state&&Array.isArray(state.spotlight)&&state.spotlight.length){cards=state.spotlight;if(idx>=cards.length)idx=0;show(idx)}
+  else if(!cards.length)show(0);
+}
+function local(){try{var raw=localStorage.getItem("copa3_state_v1");if(raw)return JSON.parse(raw)}catch(e){}return null}
+function hasContent(p){if(!p)return false;if(Array.isArray(p.spotlight)&&p.spotlight.length)return true;try{var n=0;["A","B","C","D","E","F","G","H"].forEach(function(g){((p.teams||{})[g]||[]).forEach(function(t){if(t&&t.name)n++})});return n>0}catch(e){return false}}
+function load(){
+  var l=local();if(l)render(l);
+  // SOMENTE leitura: nunca grava no localStorage (o servidor vazio apagaria tudo)
+  fetch("api/state").then(function(r){return r.json()}).then(function(p){if(hasContent(p))render(p)}).catch(function(){});
+}
+load();restart();setInterval(load,30000);
+</script>
+</body>
+</html>
