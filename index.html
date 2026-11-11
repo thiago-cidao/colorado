@@ -64,6 +64,11 @@ tr.q-ouro td{background:#fdf6dd}tr.q-prata td{background:#eef1f5}tr.q-bronze td{
 .kv{font-size:13px}
 details.danger{border:2px dashed var(--red);border-radius:12px;padding:12px}
 .hero-edit{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.reg h3{margin:16px 0 6px;color:var(--red);border-bottom:2px solid #f1f1f3;padding-bottom:4px;font-size:16px}
+.reg h3:first-child{margin-top:0}
+.reg h4{margin:10px 0 4px;font-size:14px}
+.reg ul{margin:6px 0 6px 20px;padding:0}.reg ul li{margin:3px 0}
+.reg p{margin:6px 0}
 .hidden{display:none!important}
 </style>
 </head>
@@ -90,13 +95,73 @@ var LS_STATE="copa3_state_v1", LS_HASH="copa3_admin_hash", LS_SESS="copa3_admin_
 /* Senha do admin já definida (hash SHA-256). Troque pela tela "Trocar senha" se quiser. */
 var ADMIN_HASH="a73060afb61efe1b7c817645d00c342df02407f65435a64c88d251d56150ff42";
 var SAVE_DELAY=4000;
+/* Regulamento oficial (texto padrao). O admin pode editar pela aba "Regulamento".
+   Formato do texto: "# titulo" | "## subtitulo" | "- item" | "**negrito**" */
+var REG_DEFAULT=[
+"# 1. DISPOSIÇÕES GERAIS",
+"- A competição terá 32 botonistas, cada um representando um time.",
+"- Os 32 times são divididos em 8 grupos (A a H) de 4 botonistas.",
+"- Cada time é identificado por nome do time, nome do botonista e cidade.",
+"",
+"# 2. PRIMEIRA FASE — FASE DE GRUPOS",
+"- Todos jogam contra todos dentro do próprio grupo, em turno único (3 rodadas, 6 jogos por grupo — 48 jogos no total).",
+"- Pontuação: vitória = 3 pontos · empate = 1 ponto · derrota = 0 ponto.",
+"- Classificam-se para o mata-mata:",
+"- 1º e 2º de cada grupo → Série OURO (16 botonistas).",
+"- 3º de cada grupo → Série PRATA (8 botonistas).",
+"- 4º de cada grupo → Série BRONZE (8 botonistas).",
+"- Critérios de desempate na 1ª fase (nesta ordem): 1º Pontos · 2º Vitórias · 3º Gols Pró (marcados) · 4º Saldo de Gols.",
+"- Persistindo o empate em todos os critérios, a ordem será definida pela Organização (sorteio / ordenação manual).",
+"",
+"# 3. SÉRIE OURO",
+"- 16 botonistas (1º e 2º colocados de cada grupo).",
+"- Oitavas de final: 8 jogos eliminatórios, com tabela pré-definida — A1×H2, B1×G2, C1×F2, D1×E2, E1×D2, F1×C2, G1×B2 e H1×A2 (mesas 1 a 8).",
+"- Quartas de final: 4 jogos eliminatórios.",
+"- Semifinais: 2 jogos eliminatórios.",
+"- Final: jogo único.",
+"",
+"# 4. SÉRIE PRATA",
+"- 8 botonistas (3º colocado de cada grupo).",
+"- Quartas de final: 4 jogos eliminatórios, com tabela pré-definida — A3×D3, B3×C3, E3×H3 e F3×G3 (mesas 9 a 12).",
+"- Semifinais: 2 jogos eliminatórios.",
+"- Final: jogo único.",
+"",
+"# 5. SÉRIE BRONZE",
+"- 8 botonistas (4º colocado de cada grupo).",
+"- Quartas de final: 4 jogos eliminatórios, com tabela pré-definida — A4×D4, B4×C4, E4×H4 e F4×G4 (mesas 13 a 16).",
+"- Semifinais: 2 jogos eliminatórios.",
+"- Final: jogo único.",
+"",
+"# 6. MATA-MATA — EMPATES",
+"- Toda partida eliminatória empatada no tempo normal será decidida nos pênaltis: 5 cobranças para cada lado e, persistindo o empate, cobranças alternadas (1×1) até haver um vencedor.",
+"",
+"# 7. COLOCAÇÃO FINAL",
+"- A definição das colocações nas Séries Ouro, Prata e Bronze (exceto nas finais) é feita pela campanha geral — soma dos pontos da fase de grupos e do mata-mata.",
+"- Na final, o vencedor é o campeão e o perdedor o vice-campeão.",
+"",
+"# 8. PREMIAÇÃO",
+"## Série Ouro",
+"- Campeão, vice-campeão, 3º e 4º colocados: troféu.",
+"- 5º ao 8º colocados: medalha.",
+"## Série Prata",
+"- Campeão, vice-campeão, 3º e 4º colocados: troféu.",
+"- 5º ao 8º colocados: medalha.",
+"## Série Bronze",
+"- Campeão, vice-campeão, 3º e 4º colocados: troféu.",
+"- 5º ao 8º colocados: medalha.",
+"",
+"# 9. REGRAS GERAIS",
+"- Na Série Bronze, o botonista que optar por não participar das fases eliminatórias será declarado perdedor por WO, porém não será penalizado.",
+"- É permitido levar às mesas de jogo somente papel fornecido pela Organização.",
+"- As mesas de cada partida constam no Cronograma e podem ser ajustadas pela Organização."
+].join("\n");
 
 /* ===== ESTADO ===== */
 function blankTeams(){var o={};GROUPS.forEach(function(g){o[g]=[0,1,2,3].map(function(){return{name:"",player:"",city:""}})});return o}
 function blankScores(){return{}}
-function defaultState(){return{eventName:"III COPA NADA VAI NOS SEPARAR",banner:"",logo:"",teams:blankTeams(),inscritos:[],scores:{},pen:{},mesa:{},manual:null,spotlight:[]}}
+function defaultState(){return{eventName:"III COPA NADA VAI NOS SEPARAR",banner:"",logo:"",teams:blankTeams(),inscritos:[],scores:{},pen:{},mesa:{},manual:null,spotlight:[],regulamento:REG_DEFAULT}}
 function distribute(list){var t=blankTeams();var cnt={};GROUPS.forEach(function(g){cnt[g]=0});(list||[]).forEach(function(r){if(!r||!r.group||GROUPS.indexOf(r.group)<0)return;var g=r.group;if(cnt[g]>=4)return;t[g][cnt[g]++]={name:r.name||"",player:r.player||"",city:r.city||""}});return t}
-function normalize(p){var d=defaultState();var s=Object.assign(d,p||{});if(!Array.isArray(s.inscritos)){var mig=[];GROUPS.forEach(function(g){((s.teams||{})[g]||[]).forEach(function(t){if(t&&t.name)mig.push({name:t.name||"",player:t.player||"",city:t.city||"",group:g})})});s.inscritos=mig}if(!s.teams||typeof s.teams!=="object")s.teams=d.teams;GROUPS.forEach(function(g){if(!s.teams[g]||!Array.isArray(s.teams[g])||s.teams[g].length!==4){s.teams[g]=d.teams[g]}else{s.teams[g]=s.teams[g].map(function(t){return{name:(t&&t.name)||"",player:(t&&t.player)||"",city:(t&&t.city)||""}})}});s.teams=distribute(s.inscritos);if(!s.scores)s.scores={};if(!s.pen)s.pen={};if(!s.mesa)s.mesa={};if(!Array.isArray(s.spotlight))s.spotlight=[];s.spotlight=s.spotlight.filter(Boolean).map(function(c){return{photo:(c&&c.photo)||"",team:(c&&c.team)||"",name:(c&&c.name)||"",city:(c&&c.city)||""}});return s}
+function normalize(p){var d=defaultState();var s=Object.assign(d,p||{});if(!Array.isArray(s.inscritos)){var mig=[];GROUPS.forEach(function(g){((s.teams||{})[g]||[]).forEach(function(t){if(t&&t.name)mig.push({name:t.name||"",player:t.player||"",city:t.city||"",group:g})})});s.inscritos=mig}if(!s.teams||typeof s.teams!=="object")s.teams=d.teams;GROUPS.forEach(function(g){if(!s.teams[g]||!Array.isArray(s.teams[g])||s.teams[g].length!==4){s.teams[g]=d.teams[g]}else{s.teams[g]=s.teams[g].map(function(t){return{name:(t&&t.name)||"",player:(t&&t.player)||"",city:(t&&t.city)||""}})}});s.teams=distribute(s.inscritos);if(!s.scores)s.scores={};if(!s.pen)s.pen={};if(!s.mesa)s.mesa={};if(!Array.isArray(s.spotlight))s.spotlight=[];s.spotlight=s.spotlight.filter(Boolean).map(function(c){return{photo:(c&&c.photo)||"",team:(c&&c.team)||"",name:(c&&c.name)||"",city:(c&&c.city)||""}});if(typeof s.regulamento!=="string")s.regulamento=REG_DEFAULT;return s}
 var S=defaultState();
 function load(){try{var raw=localStorage.getItem(LS_STATE);if(raw){var p=JSON.parse(raw);if(p&&p.teams){S=normalize(p);return}}}catch(e){} }
 load();
@@ -237,7 +302,7 @@ function badge(serie){return '<span class="badge '+(serie==="OURO"?"b-ouro":seri
 function teamLine(g,i){var t=S.teams[g][i];var n=t.name||("(time "+(i+1)+" — sem nome)");return esc(n)+(t.player?' <span class="muted">· '+esc(t.player)+'</span>':"")+(t.city?' <span class="muted">('+esc(t.city)+')</span>':"")}
 
 /* ===== RENDER BASE ===== */
-var TABS=[["overview","Visão geral"],["teams","Inscritos"],["games","Jogos"],["cron","Cronograma"],["table","Classificação"],["bracket","Chaveamento"],["spot","Divulgação"],["sync","Banco / Online"]];
+var TABS=[["overview","Visão geral"],["teams","Inscritos"],["games","Jogos"],["cron","Cronograma"],["table","Classificação"],["bracket","Chaveamento"],["reg","Regulamento"],["spot","Divulgação"],["sync","Banco / Online"]];
 function render(full){
   var focusId=document.activeElement&&document.activeElement.id?document.activeElement.id:null;
   var fv=focusId?document.activeElement.value:null,fs=null;try{if(focusId&&document.activeElement.selectionStart!=null)fs=document.activeElement.selectionStart}catch(e){}
@@ -251,6 +316,7 @@ function render(full){
   else if(tab==="games")app.innerHTML=vGames();
   else if(tab==="cron")app.innerHTML=vCron();
   else if(tab==="table")app.innerHTML=vTable();
+  else if(tab==="reg")app.innerHTML=vReg();
   else if(tab==="spot")app.innerHTML=vSpot();
   else if(tab==="sync")app.innerHTML=vSync();
   else app.innerHTML=vBracket();
@@ -536,6 +602,39 @@ function vBracket(){
     return '<div class="card brk-sec"><div class="brk-head bh-'+serie.toLowerCase()+'">Série '+nic+'</div><div class="brk-body"><div class="bracket">'+cols+'</div>'+(c&&c.name?'<div class="champ'+chCls+'">🏆 Campeão '+nic+': '+esc(c.name)+'</div>':'<p class="muted">Campeão: em andamento</p>')+'</div></div>';
   }
   return '<div class="card"><h2 style="margin:0">Chaveamento</h2><p class="muted">Arraste para o lado no celular. Vencedor em negrito com ➜.</p></div>'+serieView("OURO")+serieView("PRATA")+serieView("BRONZE");
+}
+
+/* ===== REGULAMENTO (público; editável pelo admin) ===== */
+var editingReg=false;
+function regInline(s){return esc(s).replace(/\*\*([^*]+)\*\*/g,"<b>$1</b>")}
+function regToHtml(txt){
+  var lines=String(txt||"").split(/\r?\n/),out="",inList=false;
+  function closeList(){if(inList){out+="</ul>";inList=false}}
+  lines.forEach(function(raw){
+    var t=raw.replace(/\s+$/,"");
+    if(/^#\s+/.test(t)){closeList();out+='<h3>'+regInline(t.replace(/^#\s+/,""))+'</h3>'}
+    else if(/^##\s+/.test(t)){closeList();out+='<h4>'+regInline(t.replace(/^##\s+/,""))+'</h4>'}
+    else if(/^\s*[-•✔]\s+/.test(t)){if(!inList){out+='<ul>';inList=true}out+='<li>'+regInline(t.replace(/^\s*[-•✔]\s+/,""))+'</li>'}
+    else if(t.trim()===""){closeList()}
+    else{closeList();out+='<p>'+regInline(t)+'</p>'}
+  });
+  closeList();
+  return out;
+}
+window.editReg=function(){editingReg=true;render(true)};
+window.cancelReg=function(){editingReg=false;render(true)};
+window.saveReg=function(){var el=document.getElementById("regTxt");if(el)S.regulamento=el.value;editingReg=false;saveAllNow();render(true)};
+window.resetReg=function(){if(!confirm("Restaurar o texto padrão do regulamento?"))return;S.regulamento=REG_DEFAULT;saveAllNow();render(true)};
+function vReg(){
+  var h='<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">Regulamento</h2><span class="muted">III Copa Nada Vai Nos Separar — regras oficiais da competição</span></div>'
+  +(isAdmin&&!editingReg?'<button class="btn-line btn-small" onclick="editReg()">✏️ Editar</button>':"")+'</div></div>';
+  if(isAdmin&&editingReg){
+    return h+'<div class="card" style="border:2px solid var(--red)"><b>Editando o regulamento</b>'
+    +'<p class="muted">Formatação: <b>#</b> título de seção · <b>##</b> subtítulo · <b>-</b> item · <b>**negrito**</b>.</p>'
+    +'<textarea id="regTxt" rows="24" style="width:100%;border-radius:10px;border:1.5px solid #ddd;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px">'+esc(S.regulamento||"")+'</textarea>'
+    +'<div class="row" style="margin-top:8px"><button class="btn-red btn-small" onclick="saveReg()">💾 Salvar</button><button class="btn-ghost btn-small" onclick="cancelReg()">Cancelar</button><button class="btn-line btn-small" onclick="resetReg()">↺ Restaurar padrão</button></div></div>';
+  }
+  return h+'<div class="card reg">'+regToHtml(S.regulamento||"")+'</div>';
 }
 
 var editingSpot=null,spotPhotoTmp="";
