@@ -570,9 +570,9 @@ function vTable(){
     var st=standings(g);
     var rows=st.order.map(function(r,idx){
       var t=S.teams[g][r.i];var tied=st.tied[r.i];
-      var pos=idx+1;var serie=pos<=2?'<span class="badge b-ouro">Ouro</span>':pos===3?'<span class="badge b-prata">Prata</span>':'<span class="badge b-bronze">Bronze</span>';
+      var pos=idx+1;
       var qc=pos<=2?"q-ouro":pos===3?"q-prata":"q-bronze";
-      return '<tr class="'+qc+(tied?" tied":"")+'"><td><span class="pos-n pos-'+pos+'">'+pos+'</span></td><td class="l"><b>'+esc(t.name||"(sem nome)")+'</b>'+(t.player?' <span class="muted">'+esc(t.player)+'</span>':"")+(tied?' <span class="pill">empatado</span>':"")+'<br>'+serie+'</td><td>'+r.J+'</td><td>'+r.V+'</td><td>'+r.E+'</td><td>'+r.D+'</td><td>'+r.GP+'</td><td>'+r.GC+'</td><td>'+r.SG+'</td><td><b>'+r.Pts+'</b></td></tr>';
+      return '<tr class="'+qc+(tied?" tied":"")+'"><td><span class="pos-n pos-'+pos+'">'+pos+'</span></td><td class="l"><b>'+esc(t.name||"(sem nome)")+'</b>'+(t.player?' <span class="muted">'+esc(t.player)+'</span>':"")+(tied?' <span class="pill">empatado</span>':"")+'</td><td>'+r.J+'</td><td>'+r.V+'</td><td>'+r.E+'</td><td>'+r.D+'</td><td>'+r.GP+'</td><td>'+r.GC+'</td><td>'+r.SG+'</td><td><b>'+r.Pts+'</b></td></tr>';
     }).join("");
     var manualOn=S.manual&&S.manual[g];
     var adminBtn=isAdmin?(' <button class="btn-small btn-line" onclick="toggleManual(\''+g+'\')">'+(manualOn?"Voltar ao automático":"Ordenação manual")+'</button>'):"";
